@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>DM Tracker Engine</title>
+  <style>
+    :root {
+      --bg: #000000;
+      --surface: #111111;
+      --border: #222222;
+      --text: #ffffff;
+      --text-muted: #888888;
+      --primary: #ffffff;
+      --primary-fg: #000000;
+      --success: #10b981;
+      --error: #ef4444;
+    }
+
+    body {
+      width: 320px;
+      margin: 0;
+      padding: 24px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    .logo {
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      margin-bottom: 4px;
+    }
+
+    .subtitle {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: var(--text-muted);
+    }
+
+    input, select {
+      width: 100%;
+      box-sizing: border-box;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input:focus, select:focus {
+      border-color: var(--primary);
+    }
+
+    button {
+      width: 100%;
+      background: var(--primary);
+      color: var(--primary-fg);
+      border: none;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+      margin-top: 8px;
+    }
+
+    button:hover {
+      opacity: 0.9;
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .status-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      margin-top: 24px;
+    }
+
+    .status-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      margin-bottom: 8px;
+    }
+
+    .status-row:last-child {
+      margin-bottom: 0;
+    }
+
+    .status-value.online { color: var(--success); font-weight: 600; }
+    .status-value.offline { color: var(--text-muted); }
+    .status-value.error { color: var(--error); }
+
+    .message {
+      margin-top: 12px;
+      font-size: 12px;
+      text-align: center;
+      min-height: 16px;
+    }
+    .message.success { color: var(--success); }
+    .message.error { color: var(--error); }
+
+    #disconnectBtn, #logoutBtn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+      margin-top: 16px;
+    }
+    #disconnectBtn:hover, #logoutBtn:hover {
+      background: var(--surface);
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    #engineToggleBtn {
+      margin-top: 16px;
+      font-weight: 700;
+      font-size: 15px;
+      letter-spacing: 0.5px;
+    }
+    #engineToggleBtn.running {
+      background: var(--success);
+      color: #000;
+    }
+    #engineToggleBtn.paused {
+      background: var(--error);
+      color: #fff;
+    }
+
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      padding: 8px 0;
+    }
+    .toggle-row label {
+      margin: 0;
+      font-size: 12px;
+      color: var(--text);
+      flex: 1;
+    }
+    .toggle-row .hint {
+      font-size: 10px;
+      color: var(--text-muted);
+      display: block;
+      margin-top: 2px;
+    }
+    .toggle-switch {
+      position: relative;
+      width: 40px;
+      height: 22px;
+      flex-shrink: 0;
+    }
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .toggle-slider {
+      position: absolute;
+      inset: 0;
+      background: var(--border);
+      border-radius: 22px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .toggle-slider::before {
+      content: '';
+      position: absolute;
+      left: 3px;
+      top: 3px;
+      width: 16px;
+      height: 16px;
+      background: var(--text-muted);
+      border-radius: 50%;
+      transition: transform 0.2s, background 0.2s;
+    }
+    .toggle-switch input:checked + .toggle-slider {
+      background: var(--success);
+    }
+    .toggle-switch input:checked + .toggle-slider::before {
+      transform: translateX(18px);
+      background: #fff;
+    }
+
+    #downloadLogsBtn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 11px;
+      padding: 6px 10px;
+      margin-top: 4px;
+      width: auto;
+      display: inline-block;
+    }
+    #downloadLogsBtn:hover {
+      color: var(--text);
+      border-color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="logo">DM Tracker</div>
+    <div class="subtitle">Autonomous Worker Engine</div>
+  </div>
+
+  <!-- STEP 1: LOGIN -->
+  <div id="loginView">
+    <div class="form-group">
+      <label>Email</label>
+      <input type="email" id="email" placeholder="Your account email" />
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" id="password" placeholder="Your password" />
+    </div>
+    <button id="loginBtn">Login</button>
+    <div id="loginMessage" class="message"></div>
+  </div>
+
+  <!-- STEP 2: SELECT BROWSER -->
+  <div id="selectView" class="hidden">
+    <div class="form-group">
+      <label>Select Browser Instance</label>
+      <select id="browserSelect">
+        <option value="" disabled selected>Loading...</option>
+      </select>
+    </div>
+    <div class="form-group" id="manualFallbackGroup" class="hidden">
+      <label>Or Paste Pairing Key</label>
+      <input type="text" id="manualPairingKey" placeholder="e.g. HP3G-VMSK-336E" />
+    </div>
+    <button id="connectBtn" disabled>Connect to Hub</button>
+    <button id="logoutBtn">Logout</button>
+    <div id="selectMessage" class="message"></div>
+  </div>
+
+  <!-- STEP 3: ACTIVE -->
+  <div id="activeView" class="hidden">
+    <div class="status-card">
+      <div class="status-row">
+        <span style="color: var(--text-muted)">Status</span>
+        <span id="statusIndicator" class="status-value online">Online</span>
+      </div>
+      <div class="status-row">
+        <span style="color: var(--text-muted)">Browser</span>
+        <span id="browserLabelDisplay" style="font-weight: 600;">...</span>
+      </div>
+      <div class="status-row">
+        <span style="color: var(--text-muted)">Tasks Completed</span>
+        <span id="tasksCompletedDisplay">0</span>
+      </div>
+    </div>
+
+    <button id="engineToggleBtn" class="running">⏸ STOP ENGINE</button>
+    
+    <button id="disconnectBtn">Disconnect</button>
+    <button id="settingsBtn" style="background: transparent; border: 1px solid var(--border); color: var(--text); margin-top: 8px;">⚙️ Pacing Settings</button>
+    
+    <div id="settingsPanel" class="hidden" style="margin-top: 16px; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px;">
+      <div class="form-group">
+        <label>Daily Limit (Max DMs)</label>
+        <input type="number" id="dailyLimit" value="30" />
+      </div>
+      <div class="form-group">
+        <label>Base Delay (Seconds)</label>
+        <input type="number" id="baseDelay" value="90" />
+      </div>
+      <div class="form-group">
+        <label>Min Variance (Seconds)</label>
+        <input type="number" id="minVariance" value="5" />
+      </div>
+      <div class="form-group">
+        <label>Max Variance (Seconds)</label>
+        <input type="number" id="maxVariance" value="300" />
+      </div>
+      <button id="saveSettingsBtn">Save Settings</button>
+      <div id="settingsMessage" class="message"></div>
+
+      <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border);">
+        <div class="toggle-row">
+          <label>
+            Use Pre-resolved Names
+            <span class="hint">Skip Instagram lookup, use DB names. Prevents crashes.</span>
+          </label>
+          <div class="toggle-switch">
+            <input type="checkbox" id="usePreresolvedToggle">
+            <span class="toggle-slider"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 16px;">
+      <span style="font-size: 10px; color: var(--text-muted); font-weight: 600;">ENGINE LOGS</span>
+      <button id="downloadLogsBtn">⬇ Download</button>
+    </div>
+    <div id="debugLogs" style="margin-top: 6px; font-family: monospace; font-size: 10px; color: var(--text-muted); max-height: 150px; overflow-y: auto; background: var(--bg); padding: 8px; border-radius: 4px; border: 1px solid var(--border);">
+      <div>[System] Initializing...</div>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
