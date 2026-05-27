@@ -102,9 +102,24 @@ async function handleLogin(email, password) {
   }
 }
 
+function getUserIdFromToken(token) {
+  try {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+    }).join(''));
+    return JSON.parse(jsonPayload).sub;
+  } catch (e) {
+    return null;
+  }
+}
+
 async function fetchBrowsers() {
   try {
-    const browsers = await supabaseReq(`browser_instances?select=id,label,instance_key&order=created_at.desc`);
+    const userId = getUserIdFromToken(state.accessToken);
+    const filter = userId ? `user_id=eq.${userId}&` : '';
+    const browsers = await supabaseReq(`browser_instances?${filter}select=id,label,instance_key&order=created_at.desc`);
     chrome.runtime.sendMessage({ type: "FETCH_BROWSERS_SUCCESS", browsers }).catch(()=>null);
   } catch (err) {
     chrome.runtime.sendMessage({ type: "DEBUG_LOG", msg: `Fetch browsers error: ${err.message}` }).catch(()=>null);
@@ -614,6 +629,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
   if (message.type === "HUB_RESUME_ENGINE") {
     chrome.runtime.sendMessage({ type: "DEBUG_LOG", msg: "[Engine] Resumed by user. Polling will restart on next cycle." }).catch(()=>null);
+    sendResponse({ ok: true });
+    return;
+  }
+  if (message.type === "HUB_SESSION_SYNCED") {
+    // Check if we already have the same token to avoid unnecessary restarts
+    if (state.accessToken !== message.payload.accessToken) {
+      state.accessToken = message.payload.accessToken;
+      state.refreshToken = message.payload.refreshToken;
+      chrome.storage.local.set({ accessToken: state.accessToken, refreshToken: state.refreshToken }).then(() => {
+        chrome.runtime.sendMessage({ type: "HUB_LOGIN_SUCCESS" }).catch(()=>null);
+        chrome.runtime.sendMessage({ type: "DEBUG_LOG", msg: "Auto-Login Sync Successful!" }).catch(()=>null);
+      });
+    }
     sendResponse({ ok: true });
     return;
   }

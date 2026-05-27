@@ -343,6 +343,7 @@
       return e.displayName || `${r}(${this.getDisplayName(t,s)})`
     }
     getDisplayNameForFiber(e) {
+      if (!e) return null;
       var {
         elementType: t,
         type: r,
@@ -1004,17 +1005,9 @@
         let e = [];
         if ((e = (e = !(e = a ? a.findMany("IGDRecipientUserListItem") ?? [] : e).length && i ? i.findMany("IGDRecipientUserListItem") ?? [] : e).length ? e : this.root.findMany("IGDRecipientUserListItem") ?? []).length) return e.map(e => {
           var t = (e.element.memoizedProps?.recipientFragmentRef)?.__id?.split(":")?.[1];
-          let r = null,
-            s = null;
-          const n = e => e ? e.stateNode instanceof HTMLElement ? e.stateNode : n(e.child) : null;
-          e = n(e.element);
-          if (e) {
-            e = e.querySelectorAll("span");
-            const o = [];
-            e.forEach(e => {
-              0 === e.children.length && e.textContent.trim() && o.push(e.textContent.trim())
-            }), s = o[0] || null, r = o[1] || null
-          }
+          let { displayName: s, username: r } = this._getRecipientListItemText({
+            item: e,
+          });
           return {
             type: "user",
             candidate: {
@@ -1026,6 +1019,36 @@
         })
       } catch (e) {}
       return []
+    }
+    _getRecipientListItemText({ item: e }) {
+      const t = (e) =>
+          String(e || "")
+            .replace(/\s+/g, " ")
+            .trim(),
+        r = (e) =>
+          e
+            ? e.stateNode instanceof HTMLElement
+              ? e.stateNode
+              : r(e.child)
+            : null;
+      ((e = r(e.element)), (e = e?.closest?.('[role="option"]') || e));
+      if (!e) return { displayName: null, username: null };
+      var s = String(e.innerText || "")
+        .split(/\n+/)
+        .map(t)
+        .filter(Boolean)
+        .filter((e) => "Verified" !== e);
+      if (2 <= s.length) return { displayName: s[0], username: s[1] };
+      const n = [];
+      return (
+        e.querySelectorAll("span").forEach((e) => {
+          e = t(e.textContent)
+            .replace(/\bVerified\b/g, "")
+            .trim();
+          e && !n.includes(e) && n.push(e);
+        }),
+        { displayName: n[0] || null, username: n[1] || n[0] || null }
+      );
     }
     async _alternativeSearchResultsMapping({
       username: t

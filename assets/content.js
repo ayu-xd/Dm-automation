@@ -677,11 +677,31 @@ class Instagram {
                 f = t.text;
                 this.log({ type: "Using pre-resolved message (skipped IG lookup)", data: {} });
               } else {
-                var y = await this.domConnector.send("getUserFromContacts", {
-                    username: e.username
-                  });
-                if (y) {
-                  f = t.text.replaceAll("{{username}}", e.username).replaceAll("{{name}}", y?.name ?? e.username).replaceAll("{{firstName}}", y.name ? y.name.includes(" ") ? normalizeUnicodeText(parseFullName(y.name)?.first || y.secondaryName || "") : normalizeUnicodeText(y.name || "") : normalizeUnicodeText(y.secondaryName || ""));
+                const w = await this.domConnector.send("getUserFromContacts", {
+                  username: e.username,
+                });
+                if (w) {
+                  f = t.text
+                    .replaceAll("{{username}}", e.username)
+                    .replaceAll("{{name}}", w?.name ?? e.username)
+                    .replace(/[ \t]*\{\{firstName\}\}[ \t]*/g, (e) => {
+                      var t = (t = w)
+                        ? t.name
+                          ? t.name.includes(" ")
+                            ? normalizeUnicodeText(
+                                parseFullName(t.name)?.first ||
+                                  t.secondaryName ||
+                                  "",
+                              )
+                            : normalizeUnicodeText(t.name || "")
+                          : normalizeUnicodeText(t.secondaryName || "")
+                        : "";
+                      return t
+                        ? e.replace("{{firstName}}", t)
+                        : /^[ \t]/.test(e) && /[ \t]$/.test(e)
+                          ? " "
+                          : "";
+                    });
                 } else {
                   f = t.text;
                   this.log({ type: "getUserFromContacts returned undefined, using raw message", data: {} });
@@ -787,11 +807,31 @@ class Instagram {
                 g = t.text;
                 this.log({ type: "Using pre-resolved message (skipped IG lookup)", data: {} });
               } else {
-                var u = await this.domConnector.send("getUserFromContacts", {
-                    username: e.username
-                  });
-                if (u) {
-                  g = t.text.replaceAll("{{username}}", e.username).replaceAll("{{name}}", u?.name ?? e.username).replaceAll("{{firstName}}", u.name ? u.name.includes(" ") ? normalizeUnicodeText(parseFullName(u.name)?.first || u.secondaryName || "") : normalizeUnicodeText(u.name || "") : normalizeUnicodeText(u.secondaryName || ""));
+                const w = await this.domConnector.send("getUserFromContacts", {
+                  username: e.username,
+                });
+                if (w) {
+                  g = t.text
+                    .replaceAll("{{username}}", e.username)
+                    .replaceAll("{{name}}", w?.name ?? e.username)
+                    .replace(/[ \t]*\{\{firstName\}\}[ \t]*/g, (e) => {
+                      var t = (t = w)
+                        ? t.name
+                          ? t.name.includes(" ")
+                            ? normalizeUnicodeText(
+                                parseFullName(t.name)?.first ||
+                                  t.secondaryName ||
+                                  "",
+                              )
+                            : normalizeUnicodeText(t.name || "")
+                          : normalizeUnicodeText(t.secondaryName || "")
+                        : "";
+                      return t
+                        ? e.replace("{{firstName}}", t)
+                        : /^[ \t]/.test(e) && /[ \t]$/.test(e)
+                          ? " "
+                          : "";
+                    });
                 } else {
                   g = t.text;
                   this.log({ type: "getUserFromContacts returned undefined, using raw message", data: {} });
@@ -1344,9 +1384,19 @@ class Instagram {
       a = a[e];
     for (let t = 0; t < s.length; ++t)
       for (let e = 0; e < 5; e++) {
-        await this.domConnector.send("enterSymbol", {
-          symbol: s.charAt(t)
-        }), await this.sleep(Helpers.rand(50, 150));
+        try {
+          await this.domConnector.send("enterSymbol", {
+            symbol: s.charAt(t)
+          });
+        } catch (err) {
+          const errStr = typeof err === 'string' ? err : (err?.error || err?.message || '');
+          if (errStr.includes("Stuck")) {
+            this.log({ type: "enterSymbol stuck, retrying", data: { symbol: s.charAt(t) } });
+          } else {
+            throw err;
+          }
+        }
+        await this.sleep(Helpers.rand(50, 150));
         const r = await this.domConnector.send("getMessageInput", {});
         if (r === s.substring(0, t + 1)) break;
         if (4 === e) throw new Error("Failed to input")
@@ -1474,9 +1524,31 @@ class Instagram {
         unreachableType: n[r.contact_reachability_status_type]
       });
       let e = s.text;
-      e.includes("{{") && (i = await this.domConnector.send("getUserFromContacts", {
-        username: t.username
-      }), e = s.text.replaceAll("{{username}}", t.username).replaceAll("{{name}}", i?.name ?? t.username).replaceAll("{{firstName}}", (l = i).name ? l.name.includes(" ") ? normalizeUnicodeText(parseFullName(l.name)?.first || l.secondaryName || "") : normalizeUnicodeText(l.name || "") : normalizeUnicodeText(l.secondaryName || ""))), await this.sleep(5e3), await this._sendMessage({
+      if (e.includes("{{")) {
+        const w = await this.domConnector.send("getUserFromContacts", {
+          username: t.username,
+        });
+        e = s.text
+          .replaceAll("{{username}}", t.username)
+          .replaceAll("{{name}}", w?.name ?? t.username)
+          .replace(/[ \t]*\{\{firstName\}\}[ \t]*/g, (e) => {
+            var t = (t = w)
+              ? t.name
+                ? t.name.includes(" ")
+                  ? normalizeUnicodeText(
+                      parseFullName(t.name)?.first || t.secondaryName || "",
+                    )
+                  : normalizeUnicodeText(t.name || "")
+                : normalizeUnicodeText(t.secondaryName || "")
+              : "";
+            return t
+              ? e.replace("{{firstName}}", t)
+              : /^[ \t]/.test(e) && /[ \t]$/.test(e)
+                ? " "
+                : "";
+          });
+      }
+      await this.sleep(5e3), await this._sendMessage({
         text: e,
         username: t.username
       });
